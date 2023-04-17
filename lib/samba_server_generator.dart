@@ -1,8 +1,15 @@
-/// Support for doing something awesome.
-///
-/// More dartdocs go here.
 library samba_server_generator;
 
-export 'src/samba_server_generator_base.dart';
+import 'package:build/build.dart';
+import 'package:source_gen/source_gen.dart';
 
-// TODO: Export any libraries intended for clients of this package.
+import 'src/index.dart';
+
+Builder sambaServerBuilder(BuilderOptions options) {
+  return SharedPartBuilder(
+    [
+      JsonValidatorSchemaGenerator(),
+    ],
+    'samba_server_generator',
+  );
+}

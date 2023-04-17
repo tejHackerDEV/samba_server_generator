@@ -1,0 +1,9 @@
+builders:
+  samba_server_generator:
+    import: "package:samba_server_generator/samba_server_generator.dart"
+    builder_factories: ["sambaServerBuilder"]
+    build_extensions: { ".dart": [".samba_server_generator.g.dart"] }
+    auto_apply: dependents
+    build_to: cache
+    applies_builders: ["source_gen|combining_builder"]
+    runs_before: ["json_serializable|json_serializable"]
