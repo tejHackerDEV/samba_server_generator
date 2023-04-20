@@ -24,23 +24,62 @@ class SchemaGenerator extends GeneratorForAnnotation<JsonValidatorModel> {
     final stringBuffer = StringBuffer();
     final className = visitor.className;
     final fields = visitor.fields;
-    stringBuffer.writeln(
-      _generateSchema(
-        className: className,
-        fields: fields,
-      ),
-    );
+    stringBuffer
+      ..writeln('class $className$kSchemaSuffix extends $kValidatorName {')
+      ..writeln(
+        _generateValidateMethod(
+          fields: fields,
+        ),
+      )
+      ..writeln('}');
     return stringBuffer.toString();
   }
 
-  StringBuffer _generateSchema({
-    required String className,
+  StringBuffer _generateValidateMethod({
     required Iterable<ModelField> fields,
   }) {
     final stringBuffer = StringBuffer();
     stringBuffer
-      ..writeln('$kValidatorName ${"$className$kSchemaSuffix"}() {')
-      ..writeln('return $kValidatorName.schema({');
+      ..writeln('@override')
+      ..writeln(
+        'Map<String, dynamic> validate(Map<String, dynamic> json, {bool shouldThrowEarly = false,}) {',
+      );
+    StringBuffer generateFieldValidation(
+      String name,
+      String type, {
+      String? customType,
+    }) {
+      StringBuffer addError(String message) {
+        return StringBuffer()
+          ..writeln('addError("$name", $message);')
+          ..writeln('if (shouldThrowEarly) {')
+          ..writeln('throw errors;')
+          ..writeln('}');
+      }
+
+      final stringBuffer = StringBuffer();
+      stringBuffer
+        ..writeln('if (json["$name"] is! $type) {')
+        ..writeln(addError('"is not of type $type"'))
+        ..writeln('}')
+        ..writeln('else {');
+      if (customType != null) {
+        stringBuffer
+          ..writeln('try {')
+          ..writeln(
+            'addValue("$name", ${"$customType$kSchemaSuffix"}().validate(json["$name"], shouldThrowEarly: shouldThrowEarly,),);',
+          )
+          ..writeln('}')
+          ..writeln('catch (error) {')
+          ..writeln(addError('error'))
+          ..writeln('}');
+      } else {
+        stringBuffer.writeln('addValue("$name", json["$name"]);');
+      }
+      stringBuffer.writeln('}');
+      return stringBuffer;
+    }
+
     for (final field in fields) {
       bool isCustomClass = false;
       for (final element in field.type.element?.metadata ?? []) {
@@ -49,26 +88,26 @@ class SchemaGenerator extends GeneratorForAnnotation<JsonValidatorModel> {
           break;
         }
       }
-      stringBuffer.write('"${field.name}":');
-      final fieldTypeName = field.type.getDisplayString(withNullability: false);
       if (isCustomClass) {
-        stringBuffer.write(
-          ' ${"$fieldTypeName$kSchemaSuffix"}',
+        stringBuffer.writeln(
+          generateFieldValidation(
+            field.name,
+            'Map<String, dynamic>',
+            customType: field.type.getDisplayString(withNullability: false),
+          ),
         );
-      } else {
-        stringBuffer.write(
-          ' $kValidatorName.${fieldTypeName.toLowerCase()}',
-        );
+        continue;
       }
-      stringBuffer.write('()');
-      if (!field.isRequired) {
-        stringBuffer.write('..nullable()');
-      }
-      stringBuffer.write(',');
+      final fieldType = field.type.getDisplayString(withNullability: true);
+      stringBuffer.writeln(
+        generateFieldValidation(field.name, fieldType),
+      );
     }
-
     stringBuffer
-      ..writeln('});')
+      ..writeln('if (errors.isNotEmpty) {')
+      ..writeln('throw errors;')
+      ..writeln('}')
+      ..writeln('return result;')
       ..writeln('}');
     return stringBuffer;
   }
