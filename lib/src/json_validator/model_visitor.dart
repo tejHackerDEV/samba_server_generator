@@ -2,8 +2,12 @@
 
 import 'package:analyzer/dart/element/element.dart';
 import 'package:analyzer/dart/element/visitor.dart';
+import 'package:samba_server/samba_server.dart';
+import 'package:source_gen/source_gen.dart';
 
 import 'model_field.dart';
+
+const stringChecker = TypeChecker.fromRuntime(JsonValidatorString);
 
 class ModelVisitor extends SimpleElementVisitor<void> {
   late String className;
@@ -15,9 +19,7 @@ class ModelVisitor extends SimpleElementVisitor<void> {
       className = element.displayName;
       element.children.whereType<ParameterElement>().forEach((element) {
         fields.add(ModelField(
-          name: element.name,
-          type: element.type,
-          isRequired: element.isRequired,
+          element: element,
         ));
       });
     }
